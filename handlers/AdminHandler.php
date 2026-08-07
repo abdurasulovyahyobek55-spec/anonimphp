@@ -42,7 +42,7 @@ class AdminHandler {
      * Asosiy admin ekanligini tekshirish.
      */
     private static function isMainAdmin($userId) {
-        return $userId === ADMIN_ID;
+        return ADMIN_ID > 0 && (int)$userId === ADMIN_ID;
     }
 
     /**

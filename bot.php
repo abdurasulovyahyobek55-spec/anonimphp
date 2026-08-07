@@ -48,6 +48,16 @@ function main() {
         return;
     }
 
+    $webhookResult = Telegram::api('deleteWebhook', [
+        'drop_pending_updates' => true
+    ]);
+
+    if ($webhookResult && isset($webhookResult['ok']) && $webhookResult['ok']) {
+        logMsg("INFO", "Webhook muvaffaqiyatli o'chirildi. Long Polling boshlandi.");
+    } else {
+        logMsg("WARNING", "Webhook o'chirishda muammo yuz berdi, lekin davom etilmoqda.");
+    }
+
     logMsg("INFO", "Bot ishga tushdi va xabarlarni kutmoqda (Long Polling)...");
 
     $offset = 0;
@@ -83,11 +93,12 @@ function processUpdate($update) {
     }
 
     $message = $update['message'];
+    // $userId ni avvaldan aniqlash (log uchun)
+    $userId = isset($message['from']['id']) ? (int)$message['from']['id'] : 0;
 
     // Middleware: Foydalanuvchi ma'lumotlarini bazada avtomatik saqlash yoki yangilash
     if (isset($message['from'])) {
         $fromUser = $message['from'];
-        $userId = $fromUser['id'];
 
         $existing = UserDB::getUser($userId);
         if (!$existing) {

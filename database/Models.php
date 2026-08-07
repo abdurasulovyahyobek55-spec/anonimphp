@@ -10,10 +10,11 @@ class UserDB {
      */
     public static function saveUser($user_id, $username = null, $first_name = null, $last_name = null, $unique_code = null) {
         $db = Db::getDb();
+        $uid = (int)$user_id;
         
         // Foydalanuvchi mavjudligini tekshirish
         $stmt = $db->prepare("SELECT user_id FROM users WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', $uid, SQLITE3_INTEGER);
         $result = $stmt->execute();
         $row = $result->fetchArray(SQLITE3_ASSOC);
         
@@ -22,11 +23,11 @@ class UserDB {
             $stmt->bindValue(':username', $username, SQLITE3_TEXT);
             $stmt->bindValue(':first_name', $first_name, SQLITE3_TEXT);
             $stmt->bindValue(':last_name', $last_name, SQLITE3_TEXT);
-            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', $uid, SQLITE3_INTEGER);
             $stmt->execute();
         } else {
             $stmt = $db->prepare("INSERT INTO users (user_id, username, first_name, last_name, unique_code) VALUES (:user_id, :username, :first_name, :last_name, :unique_code)");
-            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', $uid, SQLITE3_INTEGER);
             $stmt->bindValue(':username', $username, SQLITE3_TEXT);
             $stmt->bindValue(':first_name', $first_name, SQLITE3_TEXT);
             $stmt->bindValue(':last_name', $last_name, SQLITE3_TEXT);
@@ -41,7 +42,7 @@ class UserDB {
     public static function getUser($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("SELECT * FROM users WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
         $row = $result->fetchArray(SQLITE3_ASSOC);
         return $row ?: null;
@@ -78,7 +79,7 @@ class UserDB {
     public static function isBlocked($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("SELECT is_blocked FROM users WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
         $row = $result->fetchArray(SQLITE3_ASSOC);
         return (bool)($row && $row['is_blocked']);
@@ -90,7 +91,7 @@ class UserDB {
     public static function blockUser($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("UPDATE users SET is_blocked = 1 WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $stmt->execute();
         return $db->changes() > 0;
     }
@@ -101,7 +102,7 @@ class UserDB {
     public static function unblockUser($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("UPDATE users SET is_blocked = 0 WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $stmt->execute();
         return $db->changes() > 0;
     }
@@ -133,12 +134,13 @@ class PrivilegedDB {
      * Foydalanuvchi admin yoki ishonchli ekanligini tekshirish.
      */
     public static function isPrivileged($user_id) {
-        if ($user_id === ADMIN_ID) {
+        // ADMIN_ID bilan == (loose) taqqoslash, type farqini oldini olish uchun
+        if (ADMIN_ID > 0 && (int)$user_id === ADMIN_ID) {
             return true;
         }
         $db = Db::getDb();
         $stmt = $db->prepare("SELECT user_id FROM privileged_users WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
         return $result->fetchArray(SQLITE3_ASSOC) !== false;
     }
@@ -150,12 +152,13 @@ class PrivilegedDB {
         $db = Db::getDb();
         try {
             $stmt = $db->prepare("INSERT OR REPLACE INTO privileged_users (user_id, role, granted_by) VALUES (:user_id, :role, :granted_by)");
-            $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+            $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
             $stmt->bindValue(':role', $role, SQLITE3_TEXT);
-            $stmt->bindValue(':granted_by', $granted_by, SQLITE3_INTEGER);
+            $stmt->bindValue(':granted_by', (int)$granted_by, SQLITE3_INTEGER);
             $stmt->execute();
             return true;
         } catch (Exception $e) {
+            error_log("addPrivileged xatolik: " . $e->getMessage());
             return false;
         }
     }
@@ -166,7 +169,7 @@ class PrivilegedDB {
     public static function removePrivileged($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("DELETE FROM privileged_users WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $stmt->execute();
         return $db->changes() > 0;
     }
@@ -196,9 +199,9 @@ class MessageDB {
     public static function saveMessage($sender_id, $receiver_id, $bot_message_id, $message_type = "text") {
         $db = Db::getDb();
         $stmt = $db->prepare("INSERT INTO messages (sender_id, receiver_id, bot_message_id, message_type) VALUES (:sender_id, :receiver_id, :bot_message_id, :message_type)");
-        $stmt->bindValue(':sender_id', $sender_id, SQLITE3_INTEGER);
-        $stmt->bindValue(':receiver_id', $receiver_id, SQLITE3_INTEGER);
-        $stmt->bindValue(':bot_message_id', $bot_message_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':sender_id', (int)$sender_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':receiver_id', (int)$receiver_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':bot_message_id', (int)$bot_message_id, SQLITE3_INTEGER);
         $stmt->bindValue(':message_type', $message_type, SQLITE3_TEXT);
         $stmt->execute();
         return $db->lastInsertRowID();
@@ -210,8 +213,8 @@ class MessageDB {
     public static function getSenderByBotMessage($receiver_id, $bot_message_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("SELECT sender_id FROM messages WHERE receiver_id = :receiver_id AND bot_message_id = :bot_message_id ORDER BY created_at DESC LIMIT 1");
-        $stmt->bindValue(':receiver_id', $receiver_id, SQLITE3_INTEGER);
-        $stmt->bindValue(':bot_message_id', $bot_message_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':receiver_id', (int)$receiver_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':bot_message_id', (int)$bot_message_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
         $row = $result->fetchArray(SQLITE3_ASSOC);
         return $row ? (int)$row['sender_id'] : null;
@@ -241,8 +244,8 @@ class ActiveSessionDB {
     public static function setSession($user_id, $receiver_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("INSERT OR REPLACE INTO active_sessions (user_id, receiver_id) VALUES (:user_id, :receiver_id)");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
-        $stmt->bindValue(':receiver_id', $receiver_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':receiver_id', (int)$receiver_id, SQLITE3_INTEGER);
         return $stmt->execute() !== false;
     }
 
@@ -252,7 +255,7 @@ class ActiveSessionDB {
     public static function getSession($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("SELECT receiver_id FROM active_sessions WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $result = $stmt->execute();
         $row = $result->fetchArray(SQLITE3_ASSOC);
         return $row ? (int)$row['receiver_id'] : null;
@@ -264,7 +267,7 @@ class ActiveSessionDB {
     public static function deleteSession($user_id) {
         $db = Db::getDb();
         $stmt = $db->prepare("DELETE FROM active_sessions WHERE user_id = :user_id");
-        $stmt->bindValue(':user_id', $user_id, SQLITE3_INTEGER);
+        $stmt->bindValue(':user_id', (int)$user_id, SQLITE3_INTEGER);
         $stmt->execute();
         return $db->changes() > 0;
     }
